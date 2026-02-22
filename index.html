@@ -23,12 +23,12 @@
 <body>
   <div class="container">
     <h1>Global DNS & Load Checker</h1>
-    <p>Enter domain—get real nameservers, HTTPS, load time, issuer.</p>
+    <p>Enter domain—get authoritative nameservers & real browser load time.</p>
     
     <input type="text" id="domainInput" placeholder="example.com" />
     <button onclick="analyzeDomain()">Analyze</button>
     
-    <p class="note">Cloudflare DoH for DNS. Load time from browser fetch—honest when you proxy.</p>
+    <p class="note">Cloudflare DoH for DNS. Load time from browser—shows edge impact when proxied.</p>
 
     <table id="logTable">
       <thead>
@@ -36,9 +36,8 @@
           <th>Timestamp</th>
           <th>Domain</th>
           <th>Authoritative DNS</th>
-          <th>HTTPS</th>
           <th>Load Time</th>
-          <th>SSL Issuer</th>
+          <th>SSL Cert</th>
         </tr>
       </thead>
       <tbody id="logBody"></tbody>
@@ -77,6 +76,11 @@
       let domain = document.getElementById('domainInput').value.trim();
       if (!domain) return alert('Enter a domain first!');
 
+      // Auto-add https:// for fetch (sites redirect anyway)
+      if (!domain.startsWith('http://') && !domain.startsWith('https://')) {
+        domain = 'https://' + domain;
+      }
+
       const now = new Date();
       const timestamp = now.toLocaleTimeString('en-US', { timeZone: 'America/Chicago' }) + ' CST';
 
@@ -84,7 +88,7 @@
 
       const startTime = performance.now();
 
-      await fetch('https://' + domain.replace(/^https?:\/\//, ''), { 
+      await fetch(domain, { 
         method: 'GET',
         mode: 'no-cors',
         redirect: 'follow',
@@ -93,17 +97,13 @@
 
       const loadTime = (performance.now() - startTime).toFixed(0) + ' ms';
 
-      const httpsStatus = domain.startsWith('https://') ? 'Active' : 'Off';
-      const httpsClass = httpsStatus === 'Active' ? 'cloudflare' : 'direct';
-
-      let issuerText = nsInfo.class === 'cloudflare' ? 'Cloudflare Inc' : "Let's Encrypt / Varies";
+      let issuerText = nsInfo.class === 'cloudflare' ? 'Cloudflare Inc' : "Other";
 
       const row = document.createElement('tr');
       row.innerHTML = `
         <td class="timestamp">${timestamp}</td>
-        <td>${domain}</td>
+        <td>${domain.replace(/^https?:\/\//, '')}</td>
         <td class="${nsInfo.class}">${nsInfo.nameservers}</td>
-        <td class="${httpsClass}">${httpsStatus}</td>
         <td>${loadTime}</td>
         <td>${issuerText}</td>
       `;
