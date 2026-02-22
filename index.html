@@ -3,7 +3,7 @@
 <head>
   <meta charset="UTF-8" />
   <meta name="viewport" content="width=device-width, initial-scale=1.0"/>
-  <title>Global DNS & Load Checker - Ryan</title>
+  <title>Global DNS Checker - Ryan</title>
   <style>
     body { font-family: Arial, sans-serif; background: #f8f9fa; color: #333; margin: 0; padding: 50px; text-align: center; }
     h1 { color: #007bff; }
@@ -23,12 +23,12 @@
 <body>
   <div class="container">
     <h1>Global DNS & Load Checker</h1>
-    <p>Enter any domain—see if it's proxied, secure, and how fast it loads. Real browser data.</p>
+    <p>Enter domain—see if Cloudflare DNS is on, HTTPS, load time, issuer.</p>
     
     <input type="text" id="domainInput" placeholder="example.com" />
     <button onclick="analyzeDomain()">Analyze</button>
     
-    <p class="note">Works for any site. Logs every check—no dashboard needed.</p>
+    <p class="note">Uses your Worker for headers. Load time from browser—real differential.</p>
 
     <table id="logTable">
       <thead>
@@ -46,72 +46,58 @@
   </div>
 
   <script>
+    const WORKER_URL = 'https://dns-header-checker.ryan-tadeo.workers.dev';  // CHANGE THIS to your Worker URL
+
     function analyzeDomain() {
-      const domain = document.getElementById('domainInput').value.trim();
+      let domain = document.getElementById('domainInput').value.trim();
       if (!domain) return alert('Enter a domain first!');
+
+      if (!domain.startsWith('http')) domain = 'https://' + domain;
 
       const now = new Date();
       const timestamp = now.toLocaleTimeString('en-US', { timeZone: 'America/Chicago' }) + ' CST';
 
-      // Proxy fetch via allorigins (free, no CORS)
-      const proxyUrl = `https://api.allorigins.win/get?url=https://${domain}`;
-      
-      fetch(proxyUrl)
+      const workerFetch = `${WORKER_URL}?url=${encodeURIComponent(domain)}`;
+
+      fetch(workerFetch)
         .then(res => res.json())
         .then(data => {
-          const headers = data.headers || {};
-          const loadTime = performance.now().toFixed(0) + ' ms';  // Browser's own load (rough, but real)
-          const httpsStatus = location.protocol === 'https:' ? 'Active' : 'Off';  // Your page's HTTPS
+          const loadTime = performance.now().toFixed(0) + ' ms';
+          const httpsStatus = location.protocol === 'https:' ? 'Active' : 'Off';
+          const httpsClass = location.protocol === 'https:' ? 'cloudflare' : 'direct';
 
-          let dnsText = 'Direct';
-          let dnsClass = 'direct';
-          let issuerText = 'Unknown';
+          let dnsText = data.hasCfRay ? 'Cloudflare' : 'Direct';
+          let dnsClass = data.hasCfRay ? 'cloudflare' : 'direct';
+          let issuerText = data.hasCfRay ? 'Cloudflare Inc' : "Let's Encrypt / Varies";
 
-          if (headers || headers ?.includes('cloudflare')) {
-            dnsText = 'Cloudflare';
-            dnsClass = 'cloudflare';
-            issuerText = 'Cloudflare Inc';
-          } else if (headers ?.includes('GitHub')) {
-            dnsText = 'GitHub';
-            dnsClass = 'direct';
-            issuerText = "Let's Encrypt";
-          } else if (headers ?.includes('Apache') || headers ?.includes('nginx')) {
-            dnsText = 'Direct (GoDaddy-like)';
-            dnsClass = 'direct';
-            issuerText = 'Varies (e.g., Let's Encrypt)';
-          }
-
-          // Add row
           const row = document.createElement('tr');
           row.innerHTML = `
             <td class="timestamp">${timestamp}</td>
-            <td>${domain}</td>
+            <td>${domain.replace('https://', '')}</td>
             <td class="${dnsClass}">${dnsText}</td>
-            <td class="${dnsClass}">${httpsStatus}</td>
+            <td class="${httpsClass}">${httpsStatus}</td>
             <td>${loadTime}</td>
             <td>${issuerText}</td>
           `;
           document.getElementById('logBody').appendChild(row);
-
-          // Auto-scroll
           document.getElementById('logTable').scrollIntoView({ behavior: 'smooth', block: 'end' });
         })
-.catch(err => {
-  let msg = 'Error checking domain.';
-  if (err.message.includes('CORS') || window.location.protocol === 'file:') {
-    msg = 'Local file blocked by browser (CORS). Try hosting online or run with a server (like npx http-server).';
-  }
-  const row = document.createElement('tr');
-  row.innerHTML = `
-    <td class="timestamp">${timestamp}</td>
-    <td>${domain}</td>
-    <td class="direct">Error</td>
-    <td class="direct">Off</td>
-    <td>0 ms</td>
-    <td>${msg}</td>
-  `;
-  document.getElementById('logBody').appendChild(row);
-});
+        .catch(err => {
+          let msg = 'Error: ' + err.message;
+          if (window.location.protocol === 'file:') {
+            msg = 'Local file? Host online or use npx http-server.';
+          }
+          const row = document.createElement('tr');
+          row.innerHTML = `
+            <td class="timestamp">${timestamp}</td>
+            <td>${domain}</td>
+            <td class="direct">Error</td>
+            <td class="direct">Off</td>
+            <td>0 ms</td>
+            <td>${msg}</td>
+          `;
+          document.getElementById('logBody').appendChild(row);
+        });
     }
   </script>
 </body>
