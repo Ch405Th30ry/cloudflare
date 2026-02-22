@@ -45,68 +45,68 @@
     </table>
   </div>
 
-  <script>
-    async function getAuthoritativeNS(domain) {
-      domain = domain.replace(/^https?:\/\//, '').replace(/\/$/, '');
+<script>
+  async function getAuthoritativeNS(domain) {
+    domain = domain.replace(/^https?:\/\//, '').replace(/\/$/, '');
 
-      const dohUrl = `https://cloudflare-dns.com/dns-query?name=${domain}&type=NS`;
+    const dohUrl = `https://cloudflare-dns.com/dns-query?name=${domain}&type=NS`;
 
-      try {
-        const res = await fetch(dohUrl, {
-          headers: { 'Accept': 'application/dns-json' }
-        });
-        const json = await res.json();
+    try {
+      const res = await fetch(dohUrl, {
+        headers: { 'Accept': 'application/dns-json' }
+      });
+      const json = await res.json();
 
-        if (json.Status !== 0 || !json.Answer) {
-          return { nameservers: 'Error', class: 'direct' };
-        }
-
-        const nsList = json.Answer.filter(r => r.type === 2).map(r => r.data.replace(/\.$/, ''));
-        const isCloudflare = nsList.some(ns => ns.toLowerCase().includes('cloudflare.com'));
-
-        return {
-          nameservers: nsList.join(', ') || 'None',
-          class: isCloudflare ? 'cloudflare' : 'direct'
-        };
-      } catch (e) {
-        return { nameservers: 'Fetch failed', class: 'direct' };
+      if (json.Status !== 0 || !json.Answer) {
+        return { nameservers: 'Error', class: 'direct' };
       }
+
+      const nsList = json.Answer.filter(r => r.type === 2).map(r => r.data.replace(/\.$/, ''));
+      const isCloudflare = nsList.some(ns => ns.toLowerCase().includes('cloudflare.com'));
+
+      return {
+        nameservers: nsList.join(', ') || 'None',
+        class: isCloudflare ? 'cloudflare' : 'direct'
+      };
+    } catch (e) {
+      return { nameservers: 'Fetch failed', class: 'direct' };
     }
+  }
 
-    async function analyzeDomain() {
-      let domain = document.getElementById('domainInput').value.trim();
-      if (!domain) return alert('Enter a domain first!');
+  async function analyzeDomain() {
+    let domain = document.getElementById('domainInput').value.trim();
+    if (!domain) return alert('Enter a domain first!');
 
-      const now = new Date();
-      const timestamp = now.toLocaleTimeString('en-US', { timeZone: 'America/Chicago' }) + ' CST';
+    const now = new Date();
+    const timestamp = now.toLocaleTimeString('en-US', { timeZone: 'America/Chicago' }) + ' CST';
 
-      const nsInfo = await getAuthoritativeNS(domain);
+    const nsInfo = await getAuthoritativeNS(domain);
 
-      const startTime = performance.now();
+    const startTime = performance.now();
 
-      // Optional: HEAD fetch for rough load time (no-cors limits info)
-      await fetch('https://' + domain.replace(/^https?:\/\//, ''), { method: 'HEAD', mode: 'no-cors' })
-        .catch(() =>);  // Silent—timing is all we care about
+    // HEAD fetch for rough load time (no-cors limits info)
+    await fetch('https://' + domain.replace(/^https?:\/\//, ''), { method: 'HEAD', mode: 'no-cors' })
+      .catch(() =>);  // Silent—timing is all we care about
 
-      const loadTime = (performance.now() - startTime).toFixed(0) + ' ms';
+    const loadTime = (performance.now() - startTime).toFixed(0) + ' ms';
 
-      const httpsStatus = location.protocol === 'https:' ? 'Active' : 'Off';
-      const httpsClass = location.protocol === 'https:' ? 'cloudflare' : 'direct';
+    const httpsStatus = location.protocol === 'https:' ? 'Active' : 'Off';
+    const httpsClass = location.protocol === 'https:' ? 'cloudflare' : 'direct';
 
-      let issuerText = nsInfo.class === 'cloudflare' ? 'Cloudflare Inc' : "Let's Encrypt / Varies";
+    let issuerText = nsInfo.class === 'cloudflare' ? 'Cloudflare Inc' : "Let's Encrypt / Varies";
 
-      const row = document.createElement('tr');
-      row.innerHTML = `
-        <td class="timestamp">${timestamp}</td>
-        <td>${domain}</td>
-        <td class="${nsInfo.class}">${nsInfo.nameservers}</td>
-        <td class="${httpsClass}">${httpsStatus}</td>
-        <td>${loadTime}</td>
-        <td>${issuerText}</td>
-      `;
-      document.getElementById('logBody').appendChild(row);
-      document.getElementById('logTable').scrollIntoView({ behavior: 'smooth', block: 'end' });
-    }
-  </script>
+    const row = document.createElement('tr');
+    row.innerHTML = `
+      <td class="timestamp">${timestamp}</td>
+      <td>${domain}</td>
+      <td class="${nsInfo.class}">${nsInfo.nameservers}</td>
+      <td class="${httpsClass}">${httpsStatus}</td>
+      <td>${loadTime}</td>
+      <td>${issuerText}</td>
+    `;
+    document.getElementById('logBody').appendChild(row);
+    document.getElementById('logTable').scrollIntoView({ behavior: 'smooth', block: 'end' });
+  }
+</script>
 </body>
 </html>
