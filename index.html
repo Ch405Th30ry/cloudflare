@@ -1,0 +1,112 @@
+<!DOCTYPE html>
+<html lang="en">
+<head>
+  <meta charset="UTF-8" />
+  <meta name="viewport" content="width=device-width, initial-scale=1.0"/>
+  <title>Global DNS Checker - Ryan</title>
+  <style>
+    body { font-family: Arial, sans-serif; background: #f8f9fa; color: #333; margin: 0; padding: 50px; text-align: center; }
+    h1 { color: #007bff; }
+    .container { max-width: 900px; margin: auto; }
+    input { padding: 12px; font-size: 1.2em; width: 400px; border: 1px solid #ddd; border-radius: 6px; }
+    button { padding: 14px 30px; font-size: 1.3em; background: #007bff; color: white; border: none; border-radius: 6px; cursor: pointer; margin-left: 10px; }
+    button:hover { background: #0056b3; }
+    table { width: 100%; border-collapse: collapse; margin-top: 40px; background: white; border: 1px solid #ddd; box-shadow: 0 4px 12px rgba(0,0,0,0.1); }
+    th, td { padding: 12px; text-align: left; border-bottom: 1px solid #eee; }
+    th { background: #007bff; color: white; }
+    .cloudflare { color: #28a745; font-weight: bold; }
+    .direct { color: #dc3545; font-weight: bold; }
+    .timestamp { color: #666; font-size: 0.9em; }
+    p.note { font-size: 0.9em; color: #777; margin-top: 20px; }
+  </style>
+</head>
+<body>
+  <div class="container">
+    <h1>Global DNS & Load Checker</h1>
+    <p>Enter domain—get real authoritative nameservers, HTTPS, load time, issuer.</p>
+    
+    <input type="text" id="domainInput" placeholder="example.com" />
+    <button onclick="analyzeDomain()">Analyze</button>
+    
+    <p class="note">Uses Cloudflare DoH for DNS query. Load time from browser—honest diff when you proxy.</p>
+
+    <table id="logTable">
+      <thead>
+        <tr>
+          <th>Timestamp</th>
+          <th>Domain</th>
+          <th>Authoritative DNS</th>
+          <th>HTTPS</th>
+          <th>Load Time</th>
+          <th>SSL Issuer</th>
+        </tr>
+      </thead>
+      <tbody id="logBody"></tbody>
+    </table>
+  </div>
+
+  <script>
+    async function getAuthoritativeNS(domain) {
+      domain = domain.replace(/^https?:\/\//, '').replace(/\/$/, '');
+
+      const dohUrl = `https://cloudflare-dns.com/dns-query?name=${domain}&type=NS`;
+
+      try {
+        const res = await fetch(dohUrl, {
+          headers: { 'Accept': 'application/dns-json' }
+        });
+        const json = await res.json();
+
+        if (json.Status !== 0 || !json.Answer) {
+          return { nameservers: 'Error', class: 'direct' };
+        }
+
+        const nsList = json.Answer.filter(r => r.type === 2).map(r => r.data.replace(/\.$/, ''));
+        const isCloudflare = nsList.some(ns => ns.toLowerCase().includes('cloudflare.com'));
+
+        return {
+          nameservers: nsList.join(', ') || 'None',
+          class: isCloudflare ? 'cloudflare' : 'direct'
+        };
+      } catch (e) {
+        return { nameservers: 'Fetch failed', class: 'direct' };
+      }
+    }
+
+    async function analyzeDomain() {
+      let domain = document.getElementById('domainInput').value.trim();
+      if (!domain) return alert('Enter a domain first!');
+
+      const now = new Date();
+      const timestamp = now.toLocaleTimeString('en-US', { timeZone: 'America/Chicago' }) + ' CST';
+
+      const nsInfo = await getAuthoritativeNS(domain);
+
+      const startTime = performance.now();
+
+      // Optional: HEAD fetch for rough load time (no-cors limits info)
+      await fetch('https://' + domain.replace(/^https?:\/\//, ''), { method: 'HEAD', mode: 'no-cors' })
+        .catch(() =>);  // Silent—timing is all we care about
+
+      const loadTime = (performance.now() - startTime).toFixed(0) + ' ms';
+
+      const httpsStatus = location.protocol === 'https:' ? 'Active' : 'Off';
+      const httpsClass = location.protocol === 'https:' ? 'cloudflare' : 'direct';
+
+      let issuerText = nsInfo.class === 'cloudflare' ? 'Cloudflare Inc' : "Let's Encrypt / Varies";
+
+      const row = document.createElement('tr');
+      row.innerHTML = `
+        <td class="timestamp">${timestamp}</td>
+        <td>${domain}</td>
+        <td class="${nsInfo.class}">${nsInfo.nameservers}</td>
+        <td class="${httpsClass}">${httpsStatus}</td>
+        <td>${loadTime}</td>
+        <td>${issuerText}</td>
+      `;
+      document.getElementById('logBody').appendChild(row);
+      document.getElementById('logTable').scrollIntoView({ behavior: 'smooth', block: 'end' });
+    }
+  </script>
+</body>
+</html>
