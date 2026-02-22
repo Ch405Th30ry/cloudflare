@@ -84,9 +84,8 @@
 
     const startTime = performance.now();
 
-    // HEAD fetch for rough load time (no-cors limits info)
     await fetch('https://' + domain.replace(/^https?:\/\//, ''), { method: 'HEAD', mode: 'no-cors' })
-      .catch(() =>);  // Silent—timing is all we care about
+      .catch(() => {});
 
     const loadTime = (performance.now() - startTime).toFixed(0) + ' ms';
 
@@ -107,6 +106,9 @@
     document.getElementById('logBody').appendChild(row);
     document.getElementById('logTable').scrollIntoView({ behavior: 'smooth', block: 'end' });
   }
+
+  // Make it global for onclick
+  window.analyzeDomain = analyzeDomain;
 </script>
 </body>
 </html>
