@@ -23,12 +23,12 @@
 <body>
   <div class="container">
     <h1>Global DNS & Load Checker</h1>
-    <p>Enter domain—get real authoritative nameservers, HTTPS, load time, issuer.</p>
+    <p>Enter domain—get real nameservers, HTTPS, load time, issuer.</p>
     
     <input type="text" id="domainInput" placeholder="example.com" />
     <button onclick="analyzeDomain()">Analyze</button>
     
-    <p class="note">Uses Cloudflare DoH for DNS query. Load time from browser—honest diff when you proxy.</p>
+    <p class="note">Cloudflare DoH for DNS. Load time from browser fetch—honest when you proxy.</p>
 
     <table id="logTable">
       <thead>
@@ -45,70 +45,73 @@
     </table>
   </div>
 
-<script>
-  async function getAuthoritativeNS(domain) {
-    domain = domain.replace(/^https?:\/\//, '').replace(/\/$/, '');
+  <script>
+    async function getAuthoritativeNS(domain) {
+      domain = domain.replace(/^https?:\/\//, '').replace(/\/$/, '');
 
-    const dohUrl = `https://cloudflare-dns.com/dns-query?name=${domain}&type=NS`;
+      const dohUrl = `https://cloudflare-dns.com/dns-query?name=${domain}&type=NS`;
 
-    try {
-      const res = await fetch(dohUrl, {
-        headers: { 'Accept': 'application/dns-json' }
-      });
-      const json = await res.json();
+      try {
+        const res = await fetch(dohUrl, {
+          headers: { 'Accept': 'application/dns-json' }
+        });
+        const json = await res.json();
 
-      if (json.Status !== 0 || !json.Answer) {
-        return { nameservers: 'Error', class: 'direct' };
+        if (json.Status !== 0 || !json.Answer) {
+          return { nameservers: 'Error', class: 'direct' };
+        }
+
+        const nsList = json.Answer.filter(r => r.type === 2).map(r => r.data.replace(/\.$/, ''));
+        const isCloudflare = nsList.some(ns => ns.toLowerCase().includes('cloudflare.com'));
+
+        return {
+          nameservers: nsList.join(', ') || 'None',
+          class: isCloudflare ? 'cloudflare' : 'direct'
+        };
+      } catch (e) {
+        return { nameservers: 'Fetch failed', class: 'direct' };
       }
-
-      const nsList = json.Answer.filter(r => r.type === 2).map(r => r.data.replace(/\.$/, ''));
-      const isCloudflare = nsList.some(ns => ns.toLowerCase().includes('cloudflare.com'));
-
-      return {
-        nameservers: nsList.join(', ') || 'None',
-        class: isCloudflare ? 'cloudflare' : 'direct'
-      };
-    } catch (e) {
-      return { nameservers: 'Fetch failed', class: 'direct' };
     }
-  }
 
-  async function analyzeDomain() {
-    let domain = document.getElementById('domainInput').value.trim();
-    if (!domain) return alert('Enter a domain first!');
+    async function analyzeDomain() {
+      let domain = document.getElementById('domainInput').value.trim();
+      if (!domain) return alert('Enter a domain first!');
 
-    const now = new Date();
-    const timestamp = now.toLocaleTimeString('en-US', { timeZone: 'America/Chicago' }) + ' CST';
+      const now = new Date();
+      const timestamp = now.toLocaleTimeString('en-US', { timeZone: 'America/Chicago' }) + ' CST';
 
-    const nsInfo = await getAuthoritativeNS(domain);
+      const nsInfo = await getAuthoritativeNS(domain);
 
-    const startTime = performance.now();
+      const startTime = performance.now();
 
-    await fetch('https://' + domain.replace(/^https?:\/\//, ''), { method: 'HEAD', mode: 'no-cors' })
-      .catch(() => {});
+      await fetch('https://' + domain.replace(/^https?:\/\//, ''), { 
+        method: 'GET',
+        mode: 'no-cors',
+        redirect: 'follow',
+        cache: 'no-store'
+      }).catch(() => {});
 
-    const loadTime = (performance.now() - startTime).toFixed(0) + ' ms';
+      const loadTime = (performance.now() - startTime).toFixed(0) + ' ms';
 
-    const httpsStatus = location.protocol === 'https:' ? 'Active' : 'Off';
-    const httpsClass = location.protocol === 'https:' ? 'cloudflare' : 'direct';
+      const httpsStatus = domain.startsWith('https://') ? 'Active' : 'Off';
+      const httpsClass = httpsStatus === 'Active' ? 'cloudflare' : 'direct';
 
-    let issuerText = nsInfo.class === 'cloudflare' ? 'Cloudflare Inc' : "Let's Encrypt / Varies";
+      let issuerText = nsInfo.class === 'cloudflare' ? 'Cloudflare Inc' : "Let's Encrypt / Varies";
 
-    const row = document.createElement('tr');
-    row.innerHTML = `
-      <td class="timestamp">${timestamp}</td>
-      <td>${domain}</td>
-      <td class="${nsInfo.class}">${nsInfo.nameservers}</td>
-      <td class="${httpsClass}">${httpsStatus}</td>
-      <td>${loadTime}</td>
-      <td>${issuerText}</td>
-    `;
-    document.getElementById('logBody').appendChild(row);
-    document.getElementById('logTable').scrollIntoView({ behavior: 'smooth', block: 'end' });
-  }
+      const row = document.createElement('tr');
+      row.innerHTML = `
+        <td class="timestamp">${timestamp}</td>
+        <td>${domain}</td>
+        <td class="${nsInfo.class}">${nsInfo.nameservers}</td>
+        <td class="${httpsClass}">${httpsStatus}</td>
+        <td>${loadTime}</td>
+        <td>${issuerText}</td>
+      `;
+      document.getElementById('logBody').appendChild(row);
+      document.getElementById('logTable').scrollIntoView({ behavior: 'smooth', block: 'end' });
+    }
 
-  // Make it global for onclick
-  window.analyzeDomain = analyzeDomain;
-</script>
+    window.analyzeDomain = analyzeDomain;
+  </script>
 </body>
 </html>
