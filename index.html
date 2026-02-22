@@ -96,18 +96,22 @@
           // Auto-scroll
           document.getElementById('logTable').scrollIntoView({ behavior: 'smooth', block: 'end' });
         })
-        .catch(err => {
-          const row = document.createElement('tr');
-          row.innerHTML = `
-            <td class="timestamp">${timestamp}</td>
-            <td>${domain}</td>
-            <td class="direct">Error</td>
-            <td class="direct">Off</td>
-            <td>0 ms</td>
-            <td>Unknown</td>
-          `;
-          document.getElementById('logBody').appendChild(row);
-        });
+.catch(err => {
+  let msg = 'Error checking domain.';
+  if (err.message.includes('CORS') || window.location.protocol === 'file:') {
+    msg = 'Local file blocked by browser (CORS). Try hosting online or run with a server (like npx http-server).';
+  }
+  const row = document.createElement('tr');
+  row.innerHTML = `
+    <td class="timestamp">${timestamp}</td>
+    <td>${domain}</td>
+    <td class="direct">Error</td>
+    <td class="direct">Off</td>
+    <td>0 ms</td>
+    <td>${msg}</td>
+  `;
+  document.getElementById('logBody').appendChild(row);
+});
     }
   </script>
 </body>
