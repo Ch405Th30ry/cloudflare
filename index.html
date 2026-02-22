@@ -67,8 +67,8 @@
           const httpsClass = location.protocol === 'https:' ? 'cloudflare' : 'direct';
 
           let dnsText = data.hasCfRay ? 'Cloudflare' : 'Direct';
-          let dnsClass = data.hasCfRay ? 'cloudflare' : 'direct';
-          let issuerText = data.hasCfRay ? 'Cloudflare Inc' : "Let's Encrypt / Varies";
+          let dnsClass = data.hasCfRay ? 'Cloudflare' : 'Direct';
+          let issuerText = data.hasCfRay ? 'Cloudflare' : 'Other';
 
           const row = document.createElement('tr');
           row.innerHTML = `
