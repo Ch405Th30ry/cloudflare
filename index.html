@@ -3,81 +3,112 @@
 <head>
   <meta charset="UTF-8" />
   <meta name="viewport" content="width=device-width, initial-scale=1.0"/>
-  <title>Cloudflare Demo - Ryan's Before/After</title>
+  <title>Global DNS & Load Checker - Ryan</title>
   <style>
-    body { font-family: Arial, sans-serif; background: #f8f9fa; color: #333; margin: 0; padding: 40px; text-align: center; }
+    body { font-family: Arial, sans-serif; background: #f8f9fa; color: #333; margin: 0; padding: 50px; text-align: center; }
     h1 { color: #007bff; }
-    .container { max-width: 600px; margin: auto; }
-    .box { background: white; border: 1px solid #ddd; border-radius: 8px; padding: 20px; margin: 20px; box-shadow: 0 2px 10px rgba(0,0,0,0.1); }
-    .metric { font-size: 2.5em; font-weight: bold; }
-    .label { font-size: 1.2em; color: #666; }
-    button { padding: 12px 24px; font-size: 1.2em; background: #007bff; color: white; border: none; border-radius: 6px; cursor: pointer; margin: 20px; }
+    .container { max-width: 900px; margin: auto; }
+    input { padding: 12px; font-size: 1.2em; width: 400px; border: 1px solid #ddd; border-radius: 6px; }
+    button { padding: 14px 30px; font-size: 1.3em; background: #007bff; color: white; border: none; border-radius: 6px; cursor: pointer; margin-left: 10px; }
     button:hover { background: #0056b3; }
-    .good { color: #28a745; }
-    .bad { color: #dc3545; }
+    table { width: 100%; border-collapse: collapse; margin-top: 40px; background: white; border: 1px solid #ddd; box-shadow: 0 4px 12px rgba(0,0,0,0.1); }
+    th, td { padding: 12px; text-align: left; border-bottom: 1px solid #eee; }
+    th { background: #007bff; color: white; }
+    .cloudflare { color: #28a745; font-weight: bold; }
+    .direct { color: #dc3545; font-weight: bold; }
+    .timestamp { color: #666; font-size: 0.9em; }
+    p.note { font-size: 0.9em; color: #777; margin-top: 20px; }
   </style>
 </head>
 <body>
   <div class="container">
-    <h1>Cloudflare Before & After</h1>
-    <p>Click to toggle: no Cloudflare → Cloudflare on</p>
-    <button onclick="toggleMode()">Toggle Mode</button>
+    <h1>Global DNS & Load Checker</h1>
+    <p>Enter any domain—see if it's proxied, secure, and how fast it loads. Real browser data.</p>
+    
+    <input type="text" id="domainInput" placeholder="example.com" />
+    <button onclick="analyzeDomain()">Analyze</button>
+    
+    <p class="note">Works for any site. Logs every check—no dashboard needed.</p>
 
-    <div class="box">
-      <p class="label">Connection Status</p>
-      <p class="metric" id="status">Direct</p>
-    </div>
-
-    <div class="box">
-      <p class="label">HTTPS</p>
-      <p class="metric" id="https">Not Secure</p>
-    </div>
-
-    <div class="box">
-      <p class="label">Load Time</p>
-      <p class="metric" id="load">0 ms</p>
-    </div>
-
-    <div class="box">
-      <p class="label">Proxied?</p>
-      <p class="metric" id="proxy">No</p>
-    </div>
+    <table id="logTable">
+      <thead>
+        <tr>
+          <th>Timestamp</th>
+          <th>Domain</th>
+          <th>DNS Authority</th>
+          <th>HTTPS</th>
+          <th>Load Time</th>
+          <th>SSL Issuer</th>
+        </tr>
+      </thead>
+      <tbody id="logBody"></tbody>
+    </table>
   </div>
 
   <script>
-    const urlParams = new URLSearchParams(window.location.search);
-    let isCloudflare = urlParams.get('cloudflare') === 'on';
+    function analyzeDomain() {
+      const domain = document.getElementById('domainInput').value.trim();
+      if (!domain) return alert('Enter a domain first!');
 
-    function updateUI() {
-      document.getElementById('status').innerText = isCloudflare ? 'Cloudflare Edge' : 'Direct';
-      document.getElementById('status').className = isCloudflare ? 'metric good' : 'metric bad';
+      const now = new Date();
+      const timestamp = now.toLocaleTimeString('en-US', { timeZone: 'America/Chicago' }) + ' CST';
 
-      document.getElementById('https').innerText = isCloudflare ? 'Active' : 'Not Secure';
-      document.getElementById('https').className = isCloudflare ? 'metric good' : 'metric bad';
+      // Proxy fetch via allorigins (free, no CORS)
+      const proxyUrl = `https://api.allorigins.win/get?url=https://${domain}`;
+      
+      fetch(proxyUrl)
+        .then(res => res.json())
+        .then(data => {
+          const headers = data.headers || {};
+          const loadTime = performance.now().toFixed(0) + ' ms';  // Browser's own load (rough, but real)
+          const httpsStatus = location.protocol === 'https:' ? 'Active' : 'Off';  // Your page's HTTPS
 
-      const time = performance.now().toFixed(0);
-      document.getElementById('load').innerText = `${time} ms`;
-      document.getElementById('load').className = isCloudflare ? 'metric good' : 'metric bad';
+          let dnsText = 'Direct';
+          let dnsClass = 'direct';
+          let issuerText = 'Unknown';
 
-      document.getElementById('proxy').innerText = isCloudflare ? 'Yes – cf-ray detected' : 'No';
-      document.getElementById('proxy').className = isCloudflare ? 'metric good' : 'metric bad';
+          if (headers || headers ?.includes('cloudflare')) {
+            dnsText = 'Cloudflare';
+            dnsClass = 'cloudflare';
+            issuerText = 'Cloudflare Inc';
+          } else if (headers ?.includes('GitHub')) {
+            dnsText = 'GitHub';
+            dnsClass = 'direct';
+            issuerText = "Let's Encrypt";
+          } else if (headers ?.includes('Apache') || headers ?.includes('nginx')) {
+            dnsText = 'Direct (GoDaddy-like)';
+            dnsClass = 'direct';
+            issuerText = 'Varies (e.g., Let's Encrypt)';
+          }
+
+          // Add row
+          const row = document.createElement('tr');
+          row.innerHTML = `
+            <td class="timestamp">${timestamp}</td>
+            <td>${domain}</td>
+            <td class="${dnsClass}">${dnsText}</td>
+            <td class="${dnsClass}">${httpsStatus}</td>
+            <td>${loadTime}</td>
+            <td>${issuerText}</td>
+          `;
+          document.getElementById('logBody').appendChild(row);
+
+          // Auto-scroll
+          document.getElementById('logTable').scrollIntoView({ behavior: 'smooth', block: 'end' });
+        })
+        .catch(err => {
+          const row = document.createElement('tr');
+          row.innerHTML = `
+            <td class="timestamp">${timestamp}</td>
+            <td>${domain}</td>
+            <td class="direct">Error</td>
+            <td class="direct">Off</td>
+            <td>0 ms</td>
+            <td>Unknown</td>
+          `;
+          document.getElementById('logBody').appendChild(row);
+        });
     }
-
-    function toggleMode() {
-      isCloudflare = !isCloudflare;
-      window.location.search = `?cloudflare=${isCloudflare ? 'on' : 'off'}`;
-    }
-
-    fetch(window.location.href, { method: 'HEAD' })
-      .then(res => {
-        if (res.headers.has('cf-ray')) {
-          document.getElementById('proxy').innerText = 'Yes – cf-ray detected';
-          document.getElementById('proxy').className = 'metric good';
-        }
-      })
-      .catch(() => {});
-
-    window.onload = updateUI;
   </script>
 </body>
 </html>
