@@ -5,56 +5,10 @@
   <meta name="viewport" content="width=device-width, initial-scale=1.0"/>
   <title>Cloudflare DNS Checker & Chat - Ryan</title>
   <style>
-    body { 
-      font-family: Arial, sans-serif; 
-      background: #ffffff; 
-      color: #333; 
-      margin: 0; 
-      padding: 30px; 
-      display: flex; 
-      gap: 30px; 
-    }
-    .left { flex: 1; max-width: 60%; }
-    .right { flex: 1; background: #f8f8f8; border-radius: 12px; padding: 20px; display: flex; flex-direction: column; }
-    h1, h2 { color: #f38020; }
-    input { 
-      padding: 12px; 
-      font-size: 1.2em; 
-      width: 80%; 
-      border: 1px solid #ddd; 
-      border-radius: 6px; 
-      background: #fff; 
-      color: #333; 
-    }
-    button { 
-      padding: 14px 30px; 
-      font-size: 1.3em; 
-      background: #f38020; 
-      color: white; 
-      border: none; 
-      border-radius: 6px; 
-      cursor: pointer; 
-      margin-left: 10px; 
-    }
-    button:hover { background: #d96b00; }
-    table { 
-      width: 100%; 
-      border-collapse: collapse; 
-      margin-top: 20px; 
-      background: #fff; 
-      border: 1px solid #ddd; 
-    }
-    th, td { padding: 12px; text-align: left; border-bottom: 1px solid #eee; }
-    th { background: #f38020; color: white; }
-    .cloudflare { color: #00c853; font-weight: bold; }
-    .direct { color: #ff5252; font-weight: bold; }
-    .timestamp { color: #666; font-size: 0.9em; }
-    #chatBox { flex: 1; overflow-y: auto; background: #fff; padding: 15px; border-radius: 8px; margin-bottom: 15px; border: 1px solid #ddd; }
-    .message { margin: 10px 0; padding: 12px; border-radius: 8px; max-width: 80%; }
-    .user { background: #f38020; color: white; align-self: flex-end; }
-    .bot { background: #f38020; color: white; align-self: flex-start; }
-    #chatInput { width: 75%; padding: 10px; border: 1px solid #ddd; background: #fff; color: #333; border-radius: 6px; }
-    #sendBtn { padding: 10px 20px; background: #f38020; border: none; color: white; border-radius: 6px; cursor: pointer; }
+body: JSON.stringify({
+  messages: [],  // empty array, no comma after
+  lastResult: lastResult ? { ...lastResult } : null
+})
   </style>
 </head>
 <body>
