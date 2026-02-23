@@ -178,18 +178,22 @@ sendBtn.onclick = async () => {
   addMessage(text, true);
   chatInput.value = '';
 
-  // Send to real Worker LLM
+  // Send message + lastResult to Worker
   const response = await fetch('/api/chat', {
     method: 'POST',
     headers: { 'Content-Type': 'application/json' },
     body: JSON.stringify({
-      messages: ,
-      lastResult: lastResult  // from global var
+      messages: [{ role: 'user', content: text }],  // simple for now
+      lastResult: lastResult ? { ...lastResult } : null
     })
   });
 
-  if (!response.ok) return addMessage("Whoops—chat down. Try again?", false);
+  if (!response.ok) {
+    addMessage("Chat error—check Worker logs?", false);
+    return;
+  }
 
+  // Stream the AI reply
   const reader = response.body.getReader();
   let botReply = '';
   const botMsg = document.createElement('div');
@@ -200,7 +204,7 @@ sendBtn.onclick = async () => {
     const { done, value } = await reader.read();
     if (done) break;
     const chunk = new TextDecoder().decode(value);
-    botReply += chunk.replace(/^data: /, '');  // SSE trim
+    botReply += chunk.replace(/^data: /gm, '');  // clean SSE
     botMsg.textContent = botReply;
     chatBox.scrollTop = chatBox.scrollHeight;
   }
