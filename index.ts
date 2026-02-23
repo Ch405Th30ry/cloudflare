@@ -12,6 +12,7 @@ const MODEL_ID = "@cf/meta/llama-3.1-8b-instruct-fp8";
 const SYSTEM_PROMPT =
   "You are a helpful, friendly Cloudflare expert. Provide concise, accurate responses. If user asks about DNS, speed, or load—use provided data if available. Explain benefits simply—no sales hype.";
 const DEFAULT_MESSAGE = "What's good?  Let's talk Cloudflare!"
+const promp = "What's good?  Let's talk Cloudflare!"
 
 export default {
   async fetch(request: Request, env: Env): Promise<Response> {
