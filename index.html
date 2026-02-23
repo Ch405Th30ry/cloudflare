@@ -3,28 +3,28 @@
 <head>
   <meta charset="UTF-8" />
   <meta name="viewport" content="width=device-width, initial-scale=1.0"/>
-  <title>Ryan Tadeo - Cloudflare DNS Checker & Chat</title>
+  <title>Cloudflare DNS Checker & Chat - Ryan</title>
   <style>
     body { 
       font-family: Arial, sans-serif; 
-      background: #1a1a1a; 
-      color: #e0e0e0; 
+      background: #ffffff; 
+      color: #333; 
       margin: 0; 
-      padding: 20px; 
+      padding: 30px; 
       display: flex; 
       gap: 30px; 
     }
     .left { flex: 1; max-width: 60%; }
-    .right { flex: 1; background: #222; border-radius: 12px; padding: 20px; display: flex; flex-direction: column; }
+    .right { flex: 1; background: #f8f8f8; border-radius: 12px; padding: 20px; display: flex; flex-direction: column; }
     h1, h2 { color: #f38020; }
     input { 
       padding: 12px; 
       font-size: 1.2em; 
       width: 80%; 
-      border: 1px solid #444; 
+      border: 1px solid #ddd; 
       border-radius: 6px; 
-      background: #333; 
-      color: #fff; 
+      background: #fff; 
+      color: #333; 
     }
     button { 
       padding: 14px 30px; 
@@ -41,31 +41,31 @@
       width: 100%; 
       border-collapse: collapse; 
       margin-top: 20px; 
-      background: #333; 
-      border: 1px solid #444; 
+      background: #fff; 
+      border: 1px solid #ddd; 
     }
-    th, td { padding: 12px; text-align: left; border-bottom: 1px solid #444; }
+    th, td { padding: 12px; text-align: left; border-bottom: 1px solid #eee; }
     th { background: #f38020; color: white; }
-    .cloudflare { color: #00ff9d; font-weight: bold; }
-    .direct { color: #ff6b6b; font-weight: bold; }
-    .timestamp { color: #aaa; font-size: 0.9em; }
-    #chatBox { flex: 1; overflow-y: auto; background: #1e1e1e; padding: 15px; border-radius: 8px; margin-bottom: 15px; }
+    .cloudflare { color: #00c853; font-weight: bold; }
+    .direct { color: #ff5252; font-weight: bold; }
+    .timestamp { color: #666; font-size: 0.9em; }
+    #chatBox { flex: 1; overflow-y: auto; background: #fff; padding: 15px; border-radius: 8px; margin-bottom: 15px; border: 1px solid #ddd; }
     .message { margin: 10px 0; padding: 12px; border-radius: 8px; max-width: 80%; }
-    .user { background: #444; align-self: flex-end; }
-    .bot { background: #f38020; color: #000; align-self: flex-start; }
-    #chatInput { width: 75%; padding: 10px; border: 1px solid #444; background: #333; color: #fff; border-radius: 6px; }
+    .user { background: #f38020; color: white; align-self: flex-end; }
+    .bot { background: #f38020; color: white; align-self: flex-start; }
+    #chatInput { width: 75%; padding: 10px; border: 1px solid #ddd; background: #fff; color: #333; border-radius: 6px; }
     #sendBtn { padding: 10px 20px; background: #f38020; border: none; color: white; border-radius: 6px; cursor: pointer; }
   </style>
 </head>
 <body>
   <div class="left">
-    <h1>RYAN TADEO - Cloudflare DNS & Load Checker</h1>
-    <p>Enter domain — see real DNS & speed. Chat on right for help.</p>
+    <h1>Cloudflare DNS & Load Checker</h1>
+    <p>Enter domain—see real DNS & speed. Chat on right for help.</p>
     
     <input type="text" id="domainInput" placeholder="example.com" />
     <button onclick="analyzeDomain()">Analyze</button>
     
-    <p style="color:#aaa; font-size:0.9em;">Cloudflare DoH + browser timing—edge magic.</p>
+    <p style="color:#666; font-size:0.9em;">Cloudflare DoH + browser timing—edge magic.</p>
 
     <table id="logTable">
       <thead>
@@ -138,7 +138,6 @@
       document.getElementById('logBody').appendChild(row);
       document.getElementById('logTable').scrollIntoView({ behavior: 'smooth', block: 'end' });
 
-      // Save for chat
       lastResult = {
         domain: domain.replace(/^https?:\/\//, ''),
         ns: nsInfo.nameservers,
@@ -148,7 +147,7 @@
       };
     }
 
-    // Enter key for input
+    // Enter for domain input
     document.getElementById('domainInput').addEventListener('keydown', e => {
       if (e.key === 'Enter') {
         e.preventDefault();
@@ -169,62 +168,61 @@
       chatBox.scrollTop = chatBox.scrollHeight;
     }
 
-    // Initial bot greeting
-    addMessage("What's good? I'm your Cloudflare helper! Analyze a domain or ask about DNS/speed.");
+    // Initial greeting
+    addMessage("Hey! I'm your Cloudflare helper. Analyze a domain or ask about DNS/speed.");
 
-sendBtn.onclick = async () => {
-  const text = chatInput.value.trim();
-  if (!text) return;
-  addMessage(text, true);
-  chatInput.value = '';
+    sendBtn.onclick = async () => {
+      const text = chatInput.value.trim();
+      if (!text) return;
+      addMessage(text, true);
+      chatInput.value = '';
 
-  const response = await fetch('/api/chat', {
-    method: 'POST',
-    headers: { 'Content-Type': 'application/json' },
-    body: JSON.stringify({
-      messages: ,
-      lastResult: lastResult ? { ...lastResult } : null
-    })
-  });
+      const response = await fetch('/api/chat', {
+        method: 'POST',
+        headers: { 'Content-Type': 'application/json' },
+        body: JSON.stringify({
+          messages: ,
+          lastResult: lastResult ? { ...lastResult } : null
+        })
+      });
 
-  if (!response.ok) {
-    addMessage("Chat error—check Worker logs?", false);
-    return;
-  }
+      if (!response.ok) {
+        addMessage("Chat error—check Worker logs?", false);
+        return;
+      }
 
-  // Stream reply
-  const reader = response.body.getReader();
-  let botReply = '';
-  const botMsg = document.createElement('div');
-  botMsg.className = 'message bot';
-  chatBox.appendChild(botMsg);
+      const reader = response.body.getReader();
+      let botReply = '';
+      const botMsg = document.createElement('div');
+      botMsg.className = 'message bot';
+      chatBox.appendChild(botMsg);
 
-  while (true) {
-    const { done, value } = await reader.read();
-    if (done) break;
+      while (true) {
+        const { done, value } = await reader.read();
+        if (done) break;
 
-    const chunk = new TextDecoder().decode(value);
-    const parts = chunk.split(/\s+/).filter(Boolean);
-    for (const part of parts) {
-      try {
-        const json = JSON.parse(part);
-        if (json.response) {
-          botReply += json.response;
-          botMsg.textContent = botReply;
-          chatBox.scrollTop = chatBox.scrollHeight;
+        const chunk = new TextDecoder().decode(value);
+        const parts = chunk.split(/\s+/).filter(Boolean);
+        for (const part of parts) {
+          try {
+            const json = JSON.parse(part);
+            if (json.response) {
+              botReply += json.response;
+              botMsg.textContent = botReply;
+              chatBox.scrollTop = chatBox.scrollHeight;
+            }
+          } catch (e)
         }
-      } catch (e)
-    }
-  }
-};
+      }
+    };
 
-// Enter key for chat (no conflict with analyze)
-chatInput.addEventListener('keydown', e => {
-  if (e.key === 'Enter') {
-    e.preventDefault();
-    sendBtn.click();
-  }
-});
+    // Enter for chat (no conflict)
+    chatInput.addEventListener('keydown', e => {
+      if (e.key === 'Enter') {
+        e.preventDefault();
+        sendBtn.click();
+      }
+    });
   </script>
 </body>
 </html>
