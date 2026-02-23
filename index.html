@@ -172,39 +172,39 @@
     // Initial bot greeting
     addMessage("What's good? I'm your Cloudflare helper! Analyze a domain or ask about DNS/speed.");
 
-    sendBtn.onclick = async () => {
-      const text = chatInput.value.trim();
-      if (!text) return;
-      addMessage(text, true);
-      chatInput.value = '';
+sendBtn.onclick = async () => {
+  const text = chatInput.value.trim();
+  if (!text) return;
+  addMessage(text, true);
+  chatInput.value = '';
 
-      let reply = "Hmm... tell me more?";
+  // Send to real Worker LLM
+  const response = await fetch('/api/chat', {
+    method: 'POST',
+    headers: { 'Content-Type': 'application/json' },
+    body: JSON.stringify({
+      messages: ,
+      lastResult: lastResult  // from global var
+    })
+  });
 
-      // Check for analyze command
-      const match = text.match(/(?:analyze|check|dns for)\s+(.+)/i);
-      if (match) {
-        const domain = match[1].trim();
-        addMessage(`Running analysis on ${domain}...`, false);
-        await analyzeDomain(domain); // Adds to table!
-        reply = `Done! Added ${domain} to the table. Last result: ${lastResult.ns} (${lastResult.load}). Want why Cloudflare's better?`;
-      } else if (lastResult && text.toLowerCase().includes('last') || text.toLowerCase().includes('result')) {
-        reply = `Last one: ${lastResult.domain} - DNS: ${lastResult.ns} (${lastResult.class === 'cloudflare' ? 'green' : 'red'}), load ${lastResult.load}. Cloudflare would cut that time in half— with edge routing.`;
-      } else if (text.toLowerCase().includes('why cloudflare')) {
-        reply = "Cloudflare DNS? Faster loads (edge caching), auto-SSL, DDoS block—all free. No ports open, just proxy. Your site's probably red now — switch to Cloudflare DNS, see the jump.";
-      } else {
-        reply = "Ask me to analyze a domain, or 'why cloudflare' — I'm learning!";
-      }
+  if (!response.ok) return addMessage("Whoops—chat down. Try again?", false);
 
-      addMessage(reply);
-    };
+  const reader = response.body.getReader();
+  let botReply = '';
+  const botMsg = document.createElement('div');
+  botMsg.className = 'message bot';
+  chatBox.appendChild(botMsg);
 
-    // Enter key for chat
-    chatInput.addEventListener('keydown', e => {
-      if (e.key === 'Enter') {
-        e.preventDefault();
-        sendBtn.click();
-      }
-    });
+  while (true) {
+    const { done, value } = await reader.read();
+    if (done) break;
+    const chunk = new TextDecoder().decode(value);
+    botReply += chunk.replace(/^data: /, '');  // SSE trim
+    botMsg.textContent = botReply;
+    chatBox.scrollTop = chatBox.scrollHeight;
+  }
+};
   </script>
 </body>
 </html>
