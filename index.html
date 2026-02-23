@@ -125,58 +125,52 @@ body: JSON.stringify({
     // Initial greeting
     addMessage("Hey! I'm your Cloudflare helper. Analyze a domain or ask about DNS/speed.");
 
-    sendBtn.onclick = async () => {
-      const text = chatInput.value.trim();
-      if (!text) return;
-      addMessage(text, true);
-      chatInput.value = '';
+sendBtn.onclick = async () => {
+  const text = chatInput.value.trim();
+  if (!text) return;
+  addMessage(text, true);
+  chatInput.value = '';
 
-      const response = await fetch('/api/chat', {
-        method: 'POST',
-        headers: { 'Content-Type': 'application/json' },
-body: JSON.stringify({
-  messages: [],  // empty array, no comma after
-  lastResult: lastResult ? { ...lastResult } : null
-})
-      });
+  const response = await fetch('/api/chat', {
+    method: 'POST',
+    headers: { 'Content-Type': 'application/json' },
+    body: JSON.stringify({
+      messages: [],
+      lastResult: lastResult ? { ...lastResult } : null
+    })
+  });
 
-      if (!response.ok) {
-        addMessage("Chat error—check Worker logs?", false);
-        return;
-      }
+  if (!response.ok) {
+    addMessage("Chat error—check Worker logs?", false);
+    return;
+  }
 
-      const reader = response.body.getReader();
-      let botReply = '';
-      const botMsg = document.createElement('div');
-      botMsg.className = 'message bot';
-      chatBox.appendChild(botMsg);
+  const reader = response.body.getReader();
+  let botReply = '';
+  const botMsg = document.createElement('div');
+  botMsg.className = 'message bot';
+  chatBox.appendChild(botMsg);
 
-      while (true) {
-        const { done, value } = await reader.read();
-        if (done) break;
+  while (true) {
+    const { done, value } = await reader.read();
+    if (done) break;
 
-        const chunk = new TextDecoder().decode(value);
-        const parts = chunk.split(/\s+/).filter(Boolean);
-        for (const part of parts) {
-          try {
-            const json = JSON.parse(part);
-            if (json.response) {
-              botReply += json.response;
-              botMsg.textContent = botReply;
-              chatBox.scrollTop = chatBox.scrollHeight;
-            }
-          } catch (e)
+    const chunk = new TextDecoder().decode(value);
+    const parts = chunk.split(/\s+/).filter(Boolean);
+    for (const part of parts) {
+      try {
+        const json = JSON.parse(part);
+        if (json.response) {
+          botReply += json.response;
+          botMsg.textContent = botReply;
+          chatBox.scrollTop = chatBox.scrollHeight;
         }
+      } catch (e) {
+        // skip bad chunks
       }
-    };
-
-    // Enter for chat (no conflict)
-    chatInput.addEventListener('keydown', e => {
-      if (e.key === 'Enter') {
-        e.preventDefault();
-        sendBtn.click();
-      }
-    });
+    }
+  }
+};
   </script>
 </body>
 </html>
