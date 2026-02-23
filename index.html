@@ -12,18 +12,26 @@ body {
   margin: 0; 
   padding: 20px; 
   display: grid; 
-  grid-template-columns: 1fr 3fr 1fr 2fr 0.5fr;  /* spacer | main | spacer | chat | edge */
+  grid-template-columns: 1fr 3fr 1fr 2fr;  /* spacer | main | spacer | chat */
   gap: 30px; 
   min-height: 100vh; 
-  max-width: 1600px; 
+  max-width: 1400px; 
   margin: auto; 
 }
 
 .main-content { 
-  grid-column: 2;  /* middle column */
+  grid-column: 2; 
+  display: grid; 
+  grid-template-columns: 1fr 3fr 1fr;  /* three sub-columns: spacer | content | spacer */
+  gap: 20px;  /* space between sub-columns */
+  align-items: start; 
+}
+
+.content-center { 
+  grid-column: 2;  /* middle sub-column—where real stuff goes */
   display: flex; 
   flex-direction: column; 
-  align-items: center;  /* centers everything inside */
+  align-items: center; 
   gap: 20px; 
 }
 
@@ -34,34 +42,12 @@ body {
   gap: 10px; 
 }
 
-input { 
-  flex: 1; 
-  padding: 12px; 
-  font-size: 1.2em; 
-  border: 1px solid #ddd; 
-  border-radius: 6px; 
-  background: #fff; 
-  color: #333; 
-}
+input { flex: 1; padding: 12px; font-size: 1.2em; border: 1px solid #ddd; border-radius: 6px; background: #fff; color: #333; }
 
-button { 
-  padding: 14px 30px; 
-  font-size: 1.3em; 
-  background: #f38020; 
-  color: white; 
-  border: none; 
-  border-radius: 6px; 
-  cursor: pointer; 
-}
+button { padding: 14px 30px; font-size: 1.3em; background: #f38020; color: white; border: none; border-radius: 6px; cursor: pointer; }
 button:hover { background: #d96b00; }
 
-table { 
-  width: 100%; 
-  border-collapse: collapse; 
-  background: #fff; 
-  border: 1px solid #ddd; 
-}
-
+table { width: 100%; border-collapse: collapse; background: #fff; border: 1px solid #ddd; }
 th, td { padding: 12px; text-align: left; border-bottom: 1px solid #eee; }
 th { background: #f38020; color: white; }
 .cloudflare { color: #00c853; font-weight: bold; }
@@ -69,7 +55,7 @@ th { background: #f38020; color: white; }
 .timestamp { color: #666; font-size: 0.9em; }
 
 .chat-column { 
-  grid-column: 4;  /* right column */
+  grid-column: 4; 
   background: #f8f8f8; 
   border-radius: 12px; 
   padding: 20px; 
@@ -79,61 +65,56 @@ th { background: #f38020; color: white; }
   height: fit-content; 
 }
 
-h1 { 
-  text-align: center; 
-  color: #f38020; 
-  margin-bottom: 10px; 
-}
+h1 { text-align: center; color: #f38020; margin-bottom: 10px; }
 
-/* Mobile: stack everything center */
+/* Mobile */
 @media (max-width: 1000px) {
-  body { 
-    grid-template-columns: 1fr; 
-    gap: 20px; 
-  }
-  .main-content, .chat-column { 
-    grid-column: 1; 
-    align-items: center; 
-  }
+  body { grid-template-columns: 1fr; gap: 20px; }
+  .main-content { grid-template-columns: 1fr; }  /* no sub-columns on small screens */
+  .content-center { grid-column: 1; }
   .input-row { flex-direction: column; }
-  input { width: 100%; }
-  button { width: 100%; }
+  input, button { width: 100%; }
 }
   </style>
 </head>
   
 <body>
   <div class="main-content">
-    <h1>Cloudflare DNS & Load Checker</h1>
-    
-    <div class="input-row">
-      <input type="text" id="domainInput" placeholder="example.com" />
-      <button onclick="analyzeDomain()">Analyze</button>
-    </div>
-    
-    <p style="color:#666; font-size:0.9em; text-align:center;">Cloudflare DoH + browser timing—edge magic.</p>
+    <div class="content-center">
+      <h1>RYAN TADEO</h1>
+      <h2>Cloudflare DNS & Load Checker</h2>
+      
+      <div class="input-row">
+        <input type="text" id="domainInput" placeholder="example.com" />
+        <button onclick="analyzeDomain()">Analyze</button>
+      </div>
+      
+      <p style="color:#666; font-size:0.9em; text-align:center;">Cloudflare DoH + browser timing—edge magic.</p>
 
-    <table id="logTable">
-      <thead>
-        <tr>
-          <th>Time</th>
-          <th>Domain</th>
-          <th>DNS</th>
-          <th>Load</th>
-          <th>Issuer</th>
-        </tr>
-      </thead>
-      <tbody id="logBody"></tbody>
-    </table>
+      <table id="logTable">
+        <thead>
+          <tr>
+            <th>Time</th>
+            <th>Domain</th>
+            <th>DNS</th>
+            <th>Load</th>
+            <th>Issuer</th>
+          </tr>
+        </thead>
+        <tbody id="logBody"></tbody>
+      </table>
+    </div>
   </div>
 
   <div class="chat-column">
     <h2>Chat with Cloudflare Expert</h2>
-    <iframe src="https://your-llm-chat-worker.dev" 
+    <iframe src="https://llm-chat-app.ryan-tadeo.workers.dev" 
             style="width:100%; height:600px; border:none; border-radius:12px; box-shadow:0 4px 12px rgba(0,0,0,0.1);"
             allowfullscreen></iframe>
   </div>
-  <script>
+</body>
+  
+<script>
     async function getAuthoritativeNS(domain) {
       domain = domain.replace(/^https?:\/\//, '').replace(/\/$/, '');
       const dohUrl = `https://cloudflare-dns.com/dns-query?name=${domain}&type=NS`;
@@ -186,6 +167,5 @@ h1 {
         analyzeDomain();
       }
     });
-  </script>
-</body>
+</script>
 </html>
