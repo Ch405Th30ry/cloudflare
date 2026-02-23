@@ -147,7 +147,7 @@ h1 { text-align: center; color: #f38020; margin-bottom: 10px; }
       await fetch(domain, { method: 'GET', mode: 'no-cors', redirect: 'follow' }).catch(() => {});
       const loadTime = (performance.now() - start).toFixed(0) + ' ms';
 
-      const issuer = nsInfo.class === 'cloudflare' ? 'Cloudflare Inc' : "Let's Encrypt / Varies";
+      const issuer = nsInfo.class === 'cloudflare' ? 'Cloudflare Inc' : "3rd Party Issuer";
 
       const row = document.createElement('tr');
       row.innerHTML = `
