@@ -3,66 +3,105 @@
 <head>
   <meta charset="UTF-8" />
   <meta name="viewport" content="width=device-width, initial-scale=1.0"/>
-  <title>Global DNS Checker - Ryan</title>
+  <title>Ryan Tadeo - Cloudflare DNS Checker & Chat</title>
   <style>
-    body { font-family: Arial, sans-serif; background: #f8f9fa; color: #333; margin: 0; padding: 50px; text-align: center; }
-    h1 { color: #007bff; }
-    .container { max-width: 900px; margin: auto; }
-    input { padding: 12px; font-size: 1.2em; width: 400px; border: 1px solid #ddd; border-radius: 6px; }
-    button { padding: 14px 30px; font-size: 1.3em; background: #007bff; color: white; border: none; border-radius: 6px; cursor: pointer; margin-left: 10px; }
-    button:hover { background: #0056b3; }
-    table { width: 100%; border-collapse: collapse; margin-top: 40px; background: white; border: 1px solid #ddd; box-shadow: 0 4px 12px rgba(0,0,0,0.1); }
-    th, td { padding: 12px; text-align: left; border-bottom: 1px solid #eee; }
-    th { background: #007bff; color: white; }
-    .cloudflare { color: #28a745; font-weight: bold; }
-    .direct { color: #dc3545; font-weight: bold; }
-    .timestamp { color: #666; font-size: 0.9em; }
-    p.note { font-size: 0.9em; color: #777; margin-top: 20px; }
+    body { 
+      font-family: Arial, sans-serif; 
+      background: #1a1a1a; 
+      color: #e0e0e0; 
+      margin: 0; 
+      padding: 20px; 
+      display: flex; 
+      gap: 30px; 
+    }
+    .left { flex: 1; max-width: 60%; }
+    .right { flex: 1; background: #222; border-radius: 12px; padding: 20px; display: flex; flex-direction: column; }
+    h1, h2 { color: #f38020; }
+    input { 
+      padding: 12px; 
+      font-size: 1.2em; 
+      width: 80%; 
+      border: 1px solid #444; 
+      border-radius: 6px; 
+      background: #333; 
+      color: #fff; 
+    }
+    button { 
+      padding: 14px 30px; 
+      font-size: 1.3em; 
+      background: #f38020; 
+      color: white; 
+      border: none; 
+      border-radius: 6px; 
+      cursor: pointer; 
+      margin-left: 10px; 
+    }
+    button:hover { background: #d96b00; }
+    table { 
+      width: 100%; 
+      border-collapse: collapse; 
+      margin-top: 20px; 
+      background: #333; 
+      border: 1px solid #444; 
+    }
+    th, td { padding: 12px; text-align: left; border-bottom: 1px solid #444; }
+    th { background: #f38020; color: white; }
+    .cloudflare { color: #00ff9d; font-weight: bold; }
+    .direct { color: #ff6b6b; font-weight: bold; }
+    .timestamp { color: #aaa; font-size: 0.9em; }
+    #chatBox { flex: 1; overflow-y: auto; background: #1e1e1e; padding: 15px; border-radius: 8px; margin-bottom: 15px; }
+    .message { margin: 10px 0; padding: 12px; border-radius: 8px; max-width: 80%; }
+    .user { background: #444; align-self: flex-end; }
+    .bot { background: #f38020; color: #000; align-self: flex-start; }
+    #chatInput { width: 75%; padding: 10px; border: 1px solid #444; background: #333; color: #fff; border-radius: 6px; }
+    #sendBtn { padding: 10px 20px; background: #f38020; border: none; color: white; border-radius: 6px; cursor: pointer; }
   </style>
 </head>
 <body>
-  <div class="container">
-    <h1>Global DNS & Load Checker</h1>
-    <p>Enter domain—get authoritative nameservers & real browser load time.</p>
+  <div class="left">
+    <h1>RYAN TADEO - Cloudflare DNS & Load Checker</h1>
+    <p>Enter domain — see real DNS & speed. Chat on right for help.</p>
     
     <input type="text" id="domainInput" placeholder="example.com" />
     <button onclick="analyzeDomain()">Analyze</button>
     
-    <p class="note">Cloudflare DoH for DNS. Load time from browser—shows edge impact when proxied.</p>
+    <p style="color:#aaa; font-size:0.9em;">Cloudflare DoH + browser timing—edge magic.</p>
 
     <table id="logTable">
       <thead>
         <tr>
-          <th>Timestamp</th>
+          <th>Time</th>
           <th>Domain</th>
-          <th>Authoritative DNS</th>
-          <th>Load Time</th>
-          <th>SSL Cert</th>
+          <th>DNS</th>
+          <th>Load</th>
+          <th>Issuer</th>
         </tr>
       </thead>
       <tbody id="logBody"></tbody>
     </table>
   </div>
 
+  <div class="right">
+    <h2>Chat with Cloudflare Expert</h2>
+    <div id="chatBox"></div>
+    <div style="display:flex; gap:10px;">
+      <input type="text" id="chatInput" placeholder="Ask or analyze..." />
+      <button id="sendBtn">Send</button>
+    </div>
+  </div>
+
   <script>
+    let lastResult = null;
+
     async function getAuthoritativeNS(domain) {
       domain = domain.replace(/^https?:\/\//, '').replace(/\/$/, '');
-
       const dohUrl = `https://cloudflare-dns.com/dns-query?name=${domain}&type=NS`;
-
       try {
-        const res = await fetch(dohUrl, {
-          headers: { 'Accept': 'application/dns-json' }
-        });
+        const res = await fetch(dohUrl, { headers: { 'Accept': 'application/dns-json' } });
         const json = await res.json();
-
-        if (json.Status !== 0 || !json.Answer) {
-          return { nameservers: 'Error', class: 'direct' };
-        }
-
+        if (json.Status !== 0 || !json.Answer) return { nameservers: 'Error', class: 'direct' };
         const nsList = json.Answer.filter(r => r.type === 2).map(r => r.data.replace(/\.$/, ''));
         const isCloudflare = nsList.some(ns => ns.toLowerCase().includes('cloudflare.com'));
-
         return {
           nameservers: nsList.join(', ') || 'None',
           class: isCloudflare ? 'cloudflare' : 'direct'
@@ -72,32 +111,21 @@
       }
     }
 
-    async function analyzeDomain() {
-      let domain = document.getElementById('domainInput').value.trim();
-      if (!domain) return alert('Enter a domain first!');
-
-      // Auto-add https:// for fetch (sites redirect anyway)
-      if (!domain.startsWith('http://') && !domain.startsWith('https://')) {
-        domain = 'https://' + domain;
-      }
+    async function analyzeDomain(domainFromInput = null) {
+      let domain = domainFromInput || document.getElementById('domainInput').value.trim();
+      if (!domain) return alert('Enter a domain!');
+      if (!domain.startsWith('http://') && !domain.startsWith('https://')) domain = 'https://' + domain;
 
       const now = new Date();
       const timestamp = now.toLocaleTimeString('en-US', { timeZone: 'America/Chicago' }) + ' CST';
 
       const nsInfo = await getAuthoritativeNS(domain);
 
-      const startTime = performance.now();
+      const start = performance.now();
+      await fetch(domain, { method: 'GET', mode: 'no-cors', redirect: 'follow' }).catch(() => {});
+      const loadTime = (performance.now() - start).toFixed(0) + ' ms';
 
-      await fetch(domain, { 
-        method: 'GET',
-        mode: 'no-cors',
-        redirect: 'follow',
-        cache: 'no-store'
-      }).catch(() => {});
-
-      const loadTime = (performance.now() - startTime).toFixed(0) + ' ms';
-
-      let issuerText = nsInfo.class === 'cloudflare' ? 'Cloudflare Inc' : "Other";
+      const issuer = nsInfo.class === 'cloudflare' ? 'Cloudflare Inc' : "Let's Encrypt / Varies";
 
       const row = document.createElement('tr');
       row.innerHTML = `
@@ -105,13 +133,78 @@
         <td>${domain.replace(/^https?:\/\//, '')}</td>
         <td class="${nsInfo.class}">${nsInfo.nameservers}</td>
         <td>${loadTime}</td>
-        <td>${issuerText}</td>
+        <td>${issuer}</td>
       `;
       document.getElementById('logBody').appendChild(row);
       document.getElementById('logTable').scrollIntoView({ behavior: 'smooth', block: 'end' });
+
+      // Save for chat
+      lastResult = {
+        domain: domain.replace(/^https?:\/\//, ''),
+        ns: nsInfo.nameservers,
+        class: nsInfo.class,
+        load: loadTime,
+        issuer
+      };
     }
 
-    window.analyzeDomain = analyzeDomain;
+    // Enter key for input
+    document.getElementById('domainInput').addEventListener('keydown', e => {
+      if (e.key === 'Enter') {
+        e.preventDefault();
+        analyzeDomain();
+      }
+    });
+
+    // Chat setup
+    const chatBox = document.getElementById('chatBox');
+    const chatInput = document.getElementById('chatInput');
+    const sendBtn = document.getElementById('sendBtn');
+
+    function addMessage(text, isUser = false) {
+      const msg = document.createElement('div');
+      msg.className = `message ${isUser ? 'user' : 'bot'}`;
+      msg.textContent = text;
+      chatBox.appendChild(msg);
+      chatBox.scrollTop = chatBox.scrollHeight;
+    }
+
+    // Initial bot greeting
+    addMessage("What's good? I'm your Cloudflare helper! Analyze a domain or ask about DNS/speed.");
+
+    sendBtn.onclick = async () => {
+      const text = chatInput.value.trim();
+      if (!text) return;
+      addMessage(text, true);
+      chatInput.value = '';
+
+      let reply = "Hmm... tell me more?";
+
+      // Check for analyze command
+      const match = text.match(/(?:analyze|check|dns for)\s+(.+)/i);
+      if (match) {
+        const domain = match[1].trim();
+        addMessage(`Running analysis on ${domain}...`, false);
+        await analyzeDomain(domain); // Adds to table!
+        reply = `Done! Added ${domain} to the table. Last result: ${lastResult.ns} (${lastResult.load}). Want why Cloudflare's better?`;
+      } else if (lastResult && text.toLowerCase().includes('last') || text.toLowerCase().includes('result')) {
+        reply = `Last one: ${lastResult.domain} - DNS: ${lastResult.ns} (${lastResult.class === 'cloudflare' ? 'green' : 'red'}), load ${lastResult.load}. Cloudflare would cut that time in half— with edge routing.`;
+      } else if (text.toLowerCase().includes('why cloudflare')) {
+        reply = "Cloudflare DNS? Faster loads (edge caching), auto-SSL, DDoS block—all free. No ports open, just proxy. Your site's probably red now — switch to Cloudflare DNS, see the jump.";
+      } else {
+        reply = "Ask me to analyze a domain, or 'why cloudflare' — I'm learning!";
+      }
+
+      addMessage(reply);
+    };
+
+    // Enter key for chat
+    chatInput.addEventListener('keydown', e => {
+      if (e.key === 'Enter') {
+        e.preventDefault();
+        sendBtn.click();
+      }
+    });
   </script>
 </body>
 </html>
