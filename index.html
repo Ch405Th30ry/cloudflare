@@ -178,12 +178,11 @@ sendBtn.onclick = async () => {
   addMessage(text, true);
   chatInput.value = '';
 
-  // Send message + lastResult to Worker
   const response = await fetch('/api/chat', {
     method: 'POST',
     headers: { 'Content-Type': 'application/json' },
     body: JSON.stringify({
-      messages: [{ role: 'user', content: text }],  // simple for now
+      messages: ,
       lastResult: lastResult ? { ...lastResult } : null
     })
   });
@@ -193,7 +192,7 @@ sendBtn.onclick = async () => {
     return;
   }
 
-  // Stream the AI reply
+  // Stream reply
   const reader = response.body.getReader();
   let botReply = '';
   const botMsg = document.createElement('div');
@@ -203,12 +202,29 @@ sendBtn.onclick = async () => {
   while (true) {
     const { done, value } = await reader.read();
     if (done) break;
+
     const chunk = new TextDecoder().decode(value);
-    botReply += chunk.replace(/^data: /gm, '');  // clean SSE
-    botMsg.textContent = botReply;
-    chatBox.scrollTop = chatBox.scrollHeight;
+    const parts = chunk.split(/\s+/).filter(Boolean);
+    for (const part of parts) {
+      try {
+        const json = JSON.parse(part);
+        if (json.response) {
+          botReply += json.response;
+          botMsg.textContent = botReply;
+          chatBox.scrollTop = chatBox.scrollHeight;
+        }
+      } catch (e)
+    }
   }
 };
+
+// Enter key for chat (no conflict with analyze)
+chatInput.addEventListener('keydown', e => {
+  if (e.key === 'Enter') {
+    e.preventDefault();
+    sendBtn.click();
+  }
+});
   </script>
 </body>
 </html>
