@@ -180,10 +180,10 @@
       const response = await fetch('/api/chat', {
         method: 'POST',
         headers: { 'Content-Type': 'application/json' },
-        body: JSON.stringify({
-          messages: ,
-          lastResult: lastResult ? { ...lastResult } : null
-        })
+body: JSON.stringify({
+  messages: [],  // empty array, no comma after
+  lastResult: lastResult ? { ...lastResult } : null
+})
       });
 
       if (!response.ok) {
