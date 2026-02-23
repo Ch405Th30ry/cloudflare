@@ -32,7 +32,7 @@ export default {
       return new Response(null, { headers: corsHeaders });
     }
 
-    // Static frontend
+    // Static frontend (your Pages HTML)
     if (url.pathname === "/" || !url.pathname.startsWith("/api/")) {
       return env.ASSETS.fetch(request);
     }
@@ -62,9 +62,7 @@ async function handleChatRequest(
 
   try {
     const body = await request.json();
-    const { messages = [ ];
-      lastResult?: { domain: string; ns: string; load: string; issuer: string; class?: string };
-    };
+    const { messages = [], lastResult } = body;
 
     // Add system prompt if missing
     if (!messages.some((msg) => msg.role === "system")) {
